@@ -1,14 +1,6 @@
-# Gemini Desktop for macOS (Unofficial) — Archived
+# Google AI Desktop for macOS - inspired from [gemini-desktop-mac](https://github.com/alexcding/gemini-desktop-mac)
 
-> ## ⚠️ This project is no longer maintained
->
-> Google now ships an **official Gemini desktop app for macOS**. Please use it instead:
->
-> ### 👉 https://gemini.google/mac/
->
-> This unofficial wrapper is **archived** and will not receive further updates or bug fixes. The official app provides a better, supported experience with full feature parity and proper Google authentication handling.
-
-An **unofficial macOS desktop wrapper** for Google Gemini, built as a lightweight desktop app that loads the official Gemini website.
+An **unofficial macOS desktop wrapper** for Google AI, built as a lightweight desktop app that loads the official Google AI website.
 
 ![Desktop](docs/desktop.png)
 
@@ -16,8 +8,8 @@ An **unofficial macOS desktop wrapper** for Google Gemini, built as a lightweigh
 
 > **Disclaimer:**
 > This project is **not affiliated with, endorsed by, or sponsored by Google**.
-> "Gemini" is a trademark of **Google LLC**.
-> This app does not modify, scrape, or redistribute Gemini content — it simply loads the official website.
+> "Google AI" and related marks are trademarks of **Google LLC**.
+> This app does not modify, scrape, or redistribute Google AI content — it simply loads the official website.
 
 ---
 
@@ -34,8 +26,8 @@ An **unofficial macOS desktop wrapper** for Google Gemini, built as a lightweigh
 - Native macOS desktop experience
 - Lightweight WebView wrapper
 - Adjustable text size (80%-120%)
-- Camera & microphone support for Gemini features
-- Uses the official Gemini web interface
+- Camera & microphone support for Google AI features
+- Uses the official Google AI web interface
 - No tracking, no data collection
 - Open source
 
@@ -44,16 +36,16 @@ An **unofficial macOS desktop wrapper** for Google Gemini, built as a lightweigh
 ## What This App Is (and Isn't)
 
 **This app is:**
-- A thin desktop wrapper around `https://gemini.google.com`
+- A thin desktop wrapper around `https://google.com/ai`
 - A convenience app for macOS users
 
 **This app is NOT:**
-- An official Gemini client
+- An official Google AI client
 - A replacement for Google's website
-- A modified or enhanced version of Gemini
+- A modified or enhanced version of Google AI
 - A Google-authored product
 
-All functionality is provided entirely by the Gemini web app itself.
+All functionality is provided entirely by the Google AI web app itself.
 
 ---
 
@@ -81,8 +73,8 @@ All functionality is provided entirely by the Gemini web app itself.
 
 ### Build from Source
 ```bash
-git clone https://github.com/alexcding/gemini-desktop-mac.git
-cd gemini-desktop-mac
-open GeminiMac.xcodeproj
-# Build and run in Xcode
+git clone https://github.com/rasyidridho/google-ai-mac-app.git
+cd google-ai-mac-app
+open GoogleAIMac.xcodeproj
+Build and run in Xcode
 ```
