@@ -38,6 +38,8 @@ class WebViewModel {
     private(set) var canGoForward: Bool = false
     private(set) var isAtHome: Bool = true
     private(set) var isLoading: Bool = true
+    private(set) var endpointURL: URL? = nil
+    var pendingQuery: String? = nil
 
     // MARK: - Private Properties
 
@@ -61,6 +63,25 @@ class WebViewModel {
         isAtHome = true
         canGoBack = false
         wkWebView.load(URLRequest(url: Self.googleAIURL))
+    }
+
+    func refreshEndpoint() {
+        endpointURL = nil
+        loadHome()
+    }
+
+    func loadQuery(_ query: String) {
+        guard var components = endpointURL.flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else {
+            pendingQuery = query
+            return
+        }
+        var items = components.queryItems ?? []
+        items.removeAll { $0.name == "q" }
+        items.append(URLQueryItem(name: "q", value: query))
+        components.queryItems = items
+        guard let url = components.url else { return }
+        isAtHome = false
+        wkWebView.load(URLRequest(url: url))
     }
 
     func goBack() {
@@ -177,12 +198,20 @@ class WebViewModel {
 
         urlObserver = wkWebView.observe(\.url, options: .new) { [weak self] webView, _ in
             DispatchQueue.main.async {
-                guard let self = self else { return }
-                guard let currentURL = webView.url else { return }
+                guard let self, let currentURL = webView.url,
+                      let host = currentURL.host, host.hasSuffix("google.com") else { return }
 
-                let isHomeURL = currentURL.host == Self.googleAIHost ||
-                               currentURL.host == "www.\(Self.googleAIHost)"
+                let queryItems = URLComponents(url: currentURL, resolvingAgainstBaseURL: false)?.queryItems
+                let hasQueryParam = queryItems?.contains { $0.name == "q" } == true
+                if !hasQueryParam {
+                    self.endpointURL = currentURL
+                    if let query = self.pendingQuery {
+                        self.pendingQuery = nil
+                        self.loadQuery(query)
+                    }
+                }
 
+                let isHomeURL = host == Self.googleAIHost || host == "www.\(Self.googleAIHost)"
                 if isHomeURL {
                     self.isAtHome = true
                     self.canGoBack = false

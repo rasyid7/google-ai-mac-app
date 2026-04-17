@@ -66,9 +66,19 @@ class AppCoordinator {
 
     // MARK: - Chat Bar
 
+    func submitQuery(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        webViewModel.loadQuery(trimmed)
+        expandToMainWindow()
+    }
+
     func showChatBar() {
         // Hide main window when showing chat bar
         closeMainWindow()
+
+        // Trigger background endpoint discovery
+        webViewModel.refreshEndpoint()
 
         let position = PanelPosition.current
 
@@ -78,16 +88,12 @@ class AppCoordinator {
                 positionChatBar(bar, position: position)
             }
             bar.makeKeyAndOrderFront(nil)
-            bar.checkAndAdjustSize()
             return
         }
 
-        let contentView = ChatBarView(
-            webView: webViewModel.wkWebView,
-            onExpandToMain: { [weak self] in
-                self?.expandToMainWindow()
-            }
-        )
+        let contentView = ChatBarView(onSubmit: { [weak self] text in
+            self?.submitQuery(text)
+        })
         let hostingView = NSHostingView(rootView: contentView)
         let bar = ChatBarPanel(contentView: hostingView)
 
@@ -102,26 +108,27 @@ class AppCoordinator {
     private func positionChatBar(_ bar: ChatBarPanel, position: PanelPosition) {
         guard let screen = NSScreen.screenAtMouseLocation() ?? NSScreen.main else { return }
 
-        if position == .rememberLast {
-            let defaults = UserDefaults.standard
-            if defaults.object(forKey: UserDefaultsKeys.panelX.rawValue) != nil,
-               defaults.object(forKey: UserDefaultsKeys.panelY.rawValue) != nil {
-                let saved = NSPoint(x: defaults.double(forKey: UserDefaultsKeys.panelX.rawValue),
-                                    y: defaults.double(forKey: UserDefaultsKeys.panelY.rawValue))
-                let center = NSPoint(x: saved.x + bar.frame.width / 2, y: saved.y + bar.frame.height / 2)
-                if NSScreen.screenStrictly(containing: center) != nil {
-                    bar.setFrameOrigin(saved)
-                    return
-                }
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: UserDefaultsKeys.panelX.rawValue) != nil,
+           defaults.object(forKey: UserDefaultsKeys.panelY.rawValue) != nil {
+            let saved = NSPoint(x: defaults.double(forKey: UserDefaultsKeys.panelX.rawValue),
+                                y: defaults.double(forKey: UserDefaultsKeys.panelY.rawValue))
+            let center = NSPoint(x: saved.x + bar.frame.width / 2, y: saved.y + bar.frame.height / 2)
+            if NSScreen.screenStrictly(containing: center) != nil {
+                bar.setFrameOrigin(saved)
+                return
             }
         }
 
-        let origin = screen.point(for: bar.frame.size, position: position, dockOffset: Constants.dockOffset)
+        var origin = screen.point(for: bar.frame.size, position: position, dockOffset: Constants.dockOffset)
+        origin.y += screen.visibleFrame.height * 0.15
         bar.setFrameOrigin(origin)
     }
 
-    /// Repositions the chat bar to its configured position
+    /// Repositions the chat bar to its configured position, clearing any saved drag position
     func resetChatBarPosition() {
+        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.panelX.rawValue)
+        UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.panelY.rawValue)
         guard let bar = chatBar else { return }
         positionChatBar(bar, position: PanelPosition.current)
     }
