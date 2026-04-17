@@ -1,0 +1,196 @@
+//
+//  WebViewModel.swift
+//  GeminiDesktop
+//
+//  Created by alexcding on 2025-12-15.
+//
+
+import WebKit
+import Combine
+
+/// Handles console.log messages from JavaScript
+class ConsoleLogHandler: NSObject, WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if let body = message.body as? String {
+            print("[WebView] \(body)")
+        }
+    }
+}
+
+/// Observable wrapper around WKWebView with Google AI-specific functionality
+@Observable
+class WebViewModel {
+
+    // MARK: - Constants
+
+    static let googleAIURL = URL(string: "https://google.com/ai")!
+    static let defaultPageZoom: Double = 1.0
+
+    private static let googleAIHost = "google.com"
+    private static var userAgent: String { UserAgentOption.currentUserAgentString }
+    private static let minZoom: Double = 0.6
+    private static let maxZoom: Double = 1.4
+
+    // MARK: - Public Properties
+
+    let wkWebView: WKWebView
+    private(set) var canGoBack: Bool = false
+    private(set) var canGoForward: Bool = false
+    private(set) var isAtHome: Bool = true
+    private(set) var isLoading: Bool = true
+
+    // MARK: - Private Properties
+
+    private var backObserver: NSKeyValueObservation?
+    private var forwardObserver: NSKeyValueObservation?
+    private var urlObserver: NSKeyValueObservation?
+    private var loadingObserver: NSKeyValueObservation?
+    private let consoleLogHandler = ConsoleLogHandler()
+
+    // MARK: - Initialization
+
+    init() {
+        self.wkWebView = Self.createWebView(consoleLogHandler: consoleLogHandler)
+        setupObservers()
+        loadHome()
+    }
+
+    // MARK: - Navigation
+
+    func loadHome() {
+        isAtHome = true
+        canGoBack = false
+        wkWebView.load(URLRequest(url: Self.googleAIURL))
+    }
+
+    func goBack() {
+        isAtHome = false
+        wkWebView.goBack()
+    }
+
+    func goForward() {
+        wkWebView.goForward()
+    }
+
+    func reload() {
+        wkWebView.reload()
+    }
+
+    func openNewChat() {
+        let script = """
+        (function() {
+            const event = new KeyboardEvent('keydown', {
+                key: 'O',
+                code: 'KeyO',
+                keyCode: 79,
+                which: 79,
+                shiftKey: true,
+                metaKey: true,
+                bubbles: true,
+                cancelable: true,
+                composed: true
+            });
+            document.activeElement.dispatchEvent(event);
+            document.dispatchEvent(event);
+        })();
+        """
+        wkWebView.evaluateJavaScript(script, completionHandler: nil)
+    }
+
+    // MARK: - Zoom
+
+    func zoomIn() {
+        let newZoom = min((wkWebView.pageZoom * 100 + 1).rounded() / 100, Self.maxZoom)
+        setZoom(newZoom)
+    }
+
+    func zoomOut() {
+        let newZoom = max((wkWebView.pageZoom * 100 - 1).rounded() / 100, Self.minZoom)
+        setZoom(newZoom)
+    }
+
+    func resetZoom() {
+        setZoom(Self.defaultPageZoom)
+    }
+
+    private func setZoom(_ zoom: Double) {
+        wkWebView.pageZoom = zoom
+        UserDefaults.standard.set(zoom, forKey: UserDefaultsKeys.pageZoom.rawValue)
+    }
+
+    func applyUserAgent() {
+        let newUA = Self.userAgent
+        guard wkWebView.customUserAgent != newUA else { return }
+        wkWebView.customUserAgent = newUA
+        wkWebView.reload()
+    }
+
+    // MARK: - Private Setup
+
+    private static func createWebView(consoleLogHandler: ConsoleLogHandler) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .default()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        configuration.mediaTypesRequiringUserActionForPlayback = []
+
+        // Add user scripts
+        for script in UserScripts.createAllScripts() {
+            configuration.userContentController.addUserScript(script)
+        }
+
+        // Register console log message handler (debug only)
+        #if DEBUG
+        configuration.userContentController.add(consoleLogHandler, name: UserScripts.consoleLogHandler)
+        #endif
+
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.allowsBackForwardNavigationGestures = true
+        webView.allowsLinkPreview = true
+        webView.customUserAgent = userAgent
+
+        let savedZoom = UserDefaults.standard.double(forKey: UserDefaultsKeys.pageZoom.rawValue)
+        webView.pageZoom = savedZoom > 0 ? savedZoom : defaultPageZoom
+
+        return webView
+    }
+
+    private func setupObservers() {
+        backObserver = wkWebView.observe(\.canGoBack, options: [.new, .initial]) { [weak self] webView, _ in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.canGoBack = !self.isAtHome && webView.canGoBack
+            }
+        }
+
+        forwardObserver = wkWebView.observe(\.canGoForward, options: [.new, .initial]) { [weak self] webView, _ in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.canGoForward = webView.canGoForward
+            }
+        }
+
+        loadingObserver = wkWebView.observe(\.isLoading, options: [.new, .initial]) { [weak self] webView, _ in
+            DispatchQueue.main.async {
+                self?.isLoading = webView.isLoading
+            }
+        }
+
+        urlObserver = wkWebView.observe(\.url, options: .new) { [weak self] webView, _ in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                guard let currentURL = webView.url else { return }
+
+                let isHomeURL = currentURL.host == Self.googleAIHost ||
+                               currentURL.host == "www.\(Self.googleAIHost)"
+
+                if isHomeURL {
+                    self.isAtHome = true
+                    self.canGoBack = false
+                } else {
+                    self.isAtHome = false
+                    self.canGoBack = webView.canGoBack
+                }
+            }
+        }
+    }
+}
