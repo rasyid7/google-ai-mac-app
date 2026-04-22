@@ -76,6 +76,5 @@ All functionality is provided entirely by the Google AI web app itself.
 git clone https://github.com/rasyid7/google-ai-mac-app.git
 cd google-ai-mac-app
 open GoogleAIMac.xcodeproj
-Build and run in Xcode or run this command:
-xcodebuild build -project ClaudeMeter.xcodeproj -scheme ClaudeMeter -configuration Release CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -derivedDataPath ./build && open /Users/rasyidridho/Learning/ClaudeMeter/build/Build/Products/Release/
+Build and run in Xcode
 ```
