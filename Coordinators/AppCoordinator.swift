@@ -180,11 +180,17 @@ class AppCoordinator {
         let mainWindow = findMainWindow()
 
         if let window = mainWindow {
-            // Window exists - show it (works for suppressed windows too)
+            // Temporarily join all spaces so macOS doesn't switch spaces to find the window
+            let originalBehavior = window.collectionBehavior
+            window.collectionBehavior = originalBehavior.union(.canJoinAllSpaces)
             if let screen = targetScreen {
                 centerWindow(window, on: screen)
             }
             window.makeKeyAndOrderFront(nil)
+            // Restore original behavior on next run loop so window settles on current space
+            DispatchQueue.main.async {
+                window.collectionBehavior = originalBehavior
+            }
         } else if let openWindowAction = openWindowAction {
             // Window doesn't exist yet - use SwiftUI openWindow to create it
             openWindowAction("main")
